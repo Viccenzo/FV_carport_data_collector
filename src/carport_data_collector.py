@@ -52,6 +52,11 @@ def getValuesAsDataFrame(client, measurement, startTime, endTime):
     if isinstance(endTime, datetime):
         endTime = endTime.strftime('%Y-%m-%dT%H:%M:%SZ')
 
+    data = {
+            'report' : "Success",
+            'loggerRequestBeginTime' : datetime.datetime.now().isoformat()
+        }
+
     # Query to retrieve mean values within the time range, grouped by minute
     query = f"""
     SELECT MEAN(*) 
@@ -64,12 +69,14 @@ def getValuesAsDataFrame(client, measurement, startTime, endTime):
     
     # Convert query result to Pandas DataFrame
     values = list(result.get_points())
+
+    data['loggerRequestEndTime'] = datetime.datetime.now().isoformat()
     if values:
-        df = pd.DataFrame(values)
+        data['df_data'] = pd.DataFrame(values)
     else:
-        df = pd.DataFrame()  # Returns an empty DataFrame if no data available
+        data['df_data'] = pd.DataFrame()  # Returns an empty DataFrame if no data available
     
-    return df
+    return data
 
 def measurementToTable(measurement):
     """
@@ -187,11 +194,11 @@ while True:
                     waitTime = 1  # Shorten wait time to 1 second for faster processing
                 
                 # Retrieve the values as a DataFrame
-                df = getValuesAsDataFrame(connection, measurement, startTime, endTime)
-                df = cleanDataFrame(df)  # Clean the DataFrame by renaming columns and adjusting timestamp format
+                data = getValuesAsDataFrame(connection, measurement, startTime, endTime)
+                data['df_data'] = cleanDataFrame(data['df_data'])  # Clean the DataFrame by renaming columns and adjusting timestamp format
                 print(table)
-                print(df)
-                print(service.sendDF(df, table=table))
+                print(data['df_data'])
+                print(service.sendDF(data['df_data'], table=table))
                 healthCheck()  # Perform a health check by writing a heartbeat
                 
         finally:
